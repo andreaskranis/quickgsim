@@ -1,0 +1,17 @@
+.vscode/
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*ipynb_checkpoints/
+*.coverage
+quickgim.egg-info/*
+
+*~
+*.swp
+*.DS_Store
+*.so
+*.so.dSYM
+*.pyf
+*.mod
+*.log

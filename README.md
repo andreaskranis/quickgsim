@@ -1,0 +1,2 @@
+# quickgsim
+ Simple Genome Simulator
