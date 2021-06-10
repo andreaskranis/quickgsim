@@ -1,4 +1,12 @@
 # mkdocs.yml
+site_name: Quickgsim Documentation
+
+
+nav:
+    - 'index.md'
+    - Code Reference:
+        - animal: animal-reference.md
+
 theme:
   name: "material"
 

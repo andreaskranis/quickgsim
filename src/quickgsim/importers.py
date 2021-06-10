@@ -12,6 +12,13 @@ Todo:
 from .genotype import Genotype
 from . import np, tqdm
 
+
+def read_pedigree():
+    pass
+
+
+
+
 ######################################################
 # OPTION 1: Import genome and genotypes in two steps #
 ######################################################
@@ -39,7 +46,6 @@ def read_snps(genome,inFile,id_col=None,chr_col=1,cm_col=None,sep=",",header=Tru
         if pos is not None:
             try:
                 return typos(array[pos])
-            except ValueError:
                 print(array)
                 if verbose:
                     print(f"**WARNING: unable to convert value in position {pos} to type {typos}")

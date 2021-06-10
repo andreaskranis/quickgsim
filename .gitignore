@@ -5,7 +5,8 @@ __pycache__/
 *.pyc
 *ipynb_checkpoints/
 *.coverage
-quickgim.egg-info/*
+src/*.egg-info
+
 
 *~
 *.swp

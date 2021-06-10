@@ -1,10 +1,7 @@
-#import os
-#import time
-#import numpy as np
 
 from dataclasses import dataclass,field
 from typing import List    
-from . import RAN_GEN, np
+from . import RAN_GEN, Genotype, np
 
 @dataclass
 class Chrom:
@@ -64,7 +61,14 @@ class Genome:
         self.add_chrom(chrom_name)
         self.chroms[chrom_name].add_variant(snpid,cm_pos)
     
-    
+    def __repr__(self):
+        info  = []
+        for c in self.chroms:
+                info.append(f"- Chromosome {c} contains {self.chroms[c].nvars} variants and is {self.chroms[c].morgans} MAP-UNITS long")
+        return "\n".join(info)
+
+
+
     ##<Recombination> 
     def recomb_events(self,chrom_name,obligatory=1):
         if chrom_name in self.chroms:

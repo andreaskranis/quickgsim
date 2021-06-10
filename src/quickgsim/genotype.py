@@ -1,6 +1,5 @@
 
 from collections import UserDict
-#import numpy as np
 from . import RAN_GEN, np
 
 
