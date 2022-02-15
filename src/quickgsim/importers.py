@@ -1,7 +1,7 @@
 
 """Provides functions to import data from real SNP panels.
 
-The moduls also provides functions to validate the imported data to ensure
+The modules also provides functions to validate the imported data to ensure
 that are suitable for quicgsim.
 
 Todo:
@@ -24,11 +24,7 @@ def read_pedigree():
 ######################################################
 
 def read_snps(genome,inFile,id_col=None,chr_col=1,cm_col=None,sep=",",header=True):
-    """Read a file .
-
-    `PEP 484`_ type annotations are supported. If attribute, parameter, and
-    return types are annotated according to `PEP 484`_, they do not need to be
-    included in the docstring:
+    """Read a file with the variant information
 
     Args:
         param1 (int): The first parameter.
@@ -42,7 +38,7 @@ def read_snps(genome,inFile,id_col=None,chr_col=1,cm_col=None,sep=",",header=Tru
 
     """
     def get_elem(array,pos,typos=str,def_val=None,verbose=False):
-        """Wraps the try/except functionality to emaulate the <dict>.get() behaviour"""
+        """Wraps the try/except functionality to emulate the <dict>.get() behaviour"""
         if pos is not None:
             try:
                 return typos(array[pos])

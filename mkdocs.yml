@@ -6,10 +6,31 @@ nav:
     - 'index.md'
     - Code Reference:
         - animal: animal-reference.md
+        - quick_setup: quick_setup-reference.md
+
+
 
 theme:
   name: "material"
+  logo: dna-solid.svg
+  palette:
+    scheme: default
+    primary: blue grey
+
 
 plugins:
   - search
   - mkdocstrings
+  - mermaid2
+
+
+extra:
+  social:
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/AndreasKranis
+      name: AndreasKranis on Twitter
+
+    - icon: fontawesome/brands/github
+      link: https://github.com/andreaskranis
+      name: AndreasKranis on GitHub
+    

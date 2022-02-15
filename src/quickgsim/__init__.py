@@ -4,18 +4,22 @@ import time
 import numpy as np
 import tqdm
 
+############
+# Metadata #
+############
+__version__ = "0.0.5"
+
+
+
 #####################
 # Utility functions #
 #####################
-
 def fix_seed(seed):
     global RAN_GEN
     RAN_GEN = randomise(seed)
 
 def randomise(seed=None):
-    '''
-    ensures seed value is between 0 and 2**32 by taking the remainder for values over limit and multiplying floats below 0 by 1E4
-    '''
+    """ensures seed value is between 0 and 2**32 by taking the remainder for values over limit and multiplying floats below 0 by 1E4"""
     if not seed:
         seed = time.time_ns()+os.getpid()
     seed = abs(seed)
@@ -36,5 +40,6 @@ from .genotype import Genotype
 from .genome import Genome
 from .importers import read_snps,read_real_haplos
 from .sim import create_founders,mate,drop_pedigree
+from .quick_setup import equidistant_genome
 
 

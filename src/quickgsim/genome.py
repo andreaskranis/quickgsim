@@ -1,47 +1,81 @@
+"""
+
+
+"""
+
 
 from dataclasses import dataclass,field
-from typing import List    
+from typing import List, Dict
 from . import RAN_GEN, Genotype, np
+
+
+@dataclass
+class Variant:
+    chrom : str
+    pos : int
+    cm_pos : float = 0
+    add_effects : Dict[str,float] = field(default_factory=dict)
+    
+    def get_name(self):
+        return f"{self.chrom}_{self.pos}"
+
+
 
 @dataclass
 class Chrom:
     name : str
-    morgans: float = 0
+    length : int
+    morgans: float
     nvars : int = 0
-    snpids: List[float] = field(default_factory=list)
-    cm_pos: List[float] = field(default_factory=list) or None
+    variants: List[float] = field(default_factory=list)
+    pos_idx : Dict[int,int] = field(default_factory=dict)
+    xover_p: List[float] = field(default_factory=list) or None
     
-    def add_variant(self,snpid=None,cm_pos=None):
+    
+    def add_variant(self,pos=None,cm_pos=None):
+        self.variants.append(Variant(self.name,pos,cm_pos))
+        self.pos_idx[pos] = self.nvars
         self.nvars += 1
-        if snpid:
-            self.snpids.append(snpid) 
-        if cm_pos:
-            self.cm_pos.append(cm_pos) 
-    
+        if cm_pos>=0:
+            self.xover_p.append(cm_pos) 
+        else:
+            self.xover_p.append(pos) 
+        
     def finalise_chrom_configuration(self):
-        if self.cm_pos:
-            self.cm_pos = np.array(self.cm_pos)
-            self.nvars = len(self.cm_pos)
+        if self.xover_p:
+            self.xover_p = np.array(self.xover_p)
+            self.nvars = len(self.variants)
 
             if not self.morgans:
-                self.morgans = max(self.cm_pos)/100
-
-            ## normalise the distances to probabilities [NOTE probably exclude the first and last SNP]
-            self.cm_to_p()
+                self.morgans = max(self.xover_p)/100
         else:
-            self.cm_pos = None
-
-            
+            self.xover_p = [v.pos for v in self.variants]  ## if no cm is available, that physical position is a 1:1 proxy for cm
+        ## normalise the map distances to probabilities [NOTE probably exclude the first and last SNP]
+        self.cm_to_p()
+           
     def cm_to_p(self,skip_first_last=True):
         ##check https://numpy.org/doc/stable/reference/generated/numpy.diff.html
-        self.cm_pos = np.diff(self.cm_pos,prepend=0)/(self.morgans*100)
+        self.xover_p = np.diff(self.xover_p,prepend=0)/(self.morgans*100)
         if skip_first_last:
-            self.cm_pos = self.cm_pos[1:-1]/self.cm_pos[1:-1].sum()
+            self.xover_p = self.xover_p[1:-1]/self.xover_p[1:-1].sum()
         else:
-            self.cm_pos /= self.cm_pos.sum()
-
-    def p_to_cm(self):
-        self.cm_pos = np.cumsum(self.cm_pos*self.morgans*100)
+            self.xover_p /= self.xover_p.sum()
+            
+##NOTE: 
+#    def p_to_cm(self):
+#        self.cm_pos = np.cumsum(self.cm_pos*self.morgans*100)
+    
+    def get_variant_by_pos(self,pos,mv=None) -> Variant:
+        """Returns a variant in a specific <pos>ition"""
+        return self.pos_idx.get(pos,None)
+    
+    def get_variant_by_ordinal(self,nth_pos,mv=None) -> Variant:
+        """Returns the n-th variant"""
+        try:
+            return self.variants[nth_pos]
+        except IndexError:
+            return mv
+        
         
 
 
@@ -52,14 +86,15 @@ class Genome:
         self.chroms = {}
         self.rs = rs if rs else RAN_GEN
         
-    def add_chrom(self,chrom_name):
+    def add_chrom(self,chrom_name,length,morgans):
         if chrom_name not in self.chroms:
-            #print(f"will now add chromsome {chrom_name}")
-            self.chroms[chrom_name] = Chrom(chrom_name)
-
-    def add_variant(self,chrom_name,snpid=None,cm_pos=None):
-        self.add_chrom(chrom_name)
-        self.chroms[chrom_name].add_variant(snpid,cm_pos)
+            self.chroms[chrom_name] = Chrom(chrom_name,length,morgans)               
+            
+    def add_variant(self,chrom_name,pos,cm_pos=None):
+        try:
+            self.chroms[chrom_name].add_variant(pos,cm_pos)
+        except KeyError:
+            print(f"**WARN: chromosome {chrom_name} has not been registered to current genome object. Use add_chrom() before adding variant {chrom_name}_{pos}")
     
     def __repr__(self):
         info  = []
@@ -70,18 +105,34 @@ class Genome:
 
 
     ##<Recombination> 
-    def recomb_events(self,chrom_name,obligatory=1):
+    def recomb_events(self,chrom_name,obligatory=1,max_events_asPropChromLen=None):
+        """Determines the number of cross-overs in a chromosome drawing from a poisson distribution
+           Allows to specify the maximun number of events as a proportion of the chromosome length (could use 3 or 4 to limit outliers)
+        """
         if chrom_name in self.chroms:
             r = self.rs.poisson(self.chroms[chrom_name].morgans)
+            if max_events_asPropChromLen:
+                max_recomb = self.chroms[chrom_name].morgans * max_events_asPropChromLen
+                if r > max_recomb:
+                    r = max_recomb
             return r if r >= 1 else obligatory
         return None
     
-    def place_recomb(self,chrom,n_recomb,n_markers):
-        if (n_markers > 1):        
-            crossovers = self.rs.choice(np.arange(1,n_markers-1),n_recomb,p=chrom.cm_pos,replace=False)  ##avoid first and last markers to have clear recomb
+    def place_recomb(self,chrom,n_recomb):
+        """Determines the location of the crossovers drawing from a uniform distribution and using as weights the chrom.xover_p"""
+        n_markers = chrom.nvars
+        #Ensure that placing xoversa makes sense: I cannot do with less than 3 markers or if xovers are more than non-edge SNPs
+        if (n_markers > 2) and (n_recomb < n_markers - 2):        
+            crossovers = self.rs.choice(np.arange(1,n_markers-1),n_recomb,p=chrom.xover_p,replace=False)  ##avoid first and last markers to have clear recomb
             crossovers.sort()
             return crossovers.astype(int)
         return []
+        
+    ##<Mutation>
+    def mutate_gamete(self,gamete):
+        """would switch alleles ONLY, not introducing new mutations"""
+        return gamete
+    ##</Mutation>
     
     def get_gamete(self,genotype):
         gamete = {c:[] for c in genotype.iterate_chroms()}
@@ -93,7 +144,7 @@ class Genome:
             
             ## determine recombination paramters for current chromosome c
             n_recomb = self.recomb_events(c,obligatory=1)
-            breaks = self.place_recomb(self.chroms[c],n_recomb,n_markers)
+            breaks = self.place_recomb(self.chroms[c],n_recomb)
             st_strand = self.rs.integers(0,2)
             
             ## Collate the gamete and record break points
@@ -111,18 +162,11 @@ class Genome:
                 last_strand = self.SWITCH[st_strand]
             gamete[c][last_break:] = genotype[c][last_strand][last_break:]
             crossovers[c] = [[st_strand,last_strand],breaks]
-            
+        
         return gamete,crossovers
-    
-    ##<Mutation>
-    def mutate_gamete(self,gamete):
-        """would switch alleles ONLY, not introducing new mutations"""
-        pass
-    ##</Mutation>
-    
+
     def get_zygote(self,pat_gam,mat_gam):
         """BEWARE: No checks for dimension compatability """
-        #genotype = {c:{0:[],1:[]} for c in self.chroms.keys()}
         genotype = Genotype(self.chroms)
         
         for c in self.chroms.keys():
