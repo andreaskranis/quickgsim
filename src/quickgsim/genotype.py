@@ -23,7 +23,6 @@ class Genotype(UserDict):
         chroms = self.data.keys()
         if specific_chroms:
             chroms = (c for c in specific_chroms if self.data.get(c,None))
-        
         return chroms
 
     def as_haplo(self,strand):

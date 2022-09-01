@@ -4,18 +4,21 @@ site_name: Quickgsim Documentation
 
 nav:
     - 'index.md'
+    - Simualate Genome:
+        - Recombination: recombination.md
     - Code Reference:
         - animal: animal-reference.md
         - quick_setup: quick_setup-reference.md
 
 
-
+<!-- ingore -->
 theme:
   name: "material"
   logo: dna-solid.svg
   palette:
     scheme: default
     primary: blue grey
+[//]
 
 
 plugins:

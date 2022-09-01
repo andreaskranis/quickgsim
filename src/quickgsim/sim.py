@@ -17,15 +17,15 @@ def create_founders(genders,gens,genome):
     return founders
 
 
-def mate(sire,dam,kid_tag,genome,kid_sex=None):
-    pg,pcr = genome.get_gamete(sire.genotype)
-    mg,mcr = genome.get_gamete(dam.genotype)
+def mate(sire,dam,kid_tag,genome,kid_sex=None,mod_len_genomes={'paternal':0,'maternal':0}):
+    pg,pcr = genome.get_gamete(sire.genotype,mod_len_genome=mod_len_genomes.get('paternal',0))
+    mg,mcr = genome.get_gamete(dam.genotype,mod_len_genome=mod_len_genomes.get('maternal',0))
     
     if not kid_sex:
         kid_sex = genome.rs.integers(1,3,dtype=int)
-    gen = genome.get_zygote(pg,mg)
+    zygote = genome.get_zygote(pg,mg)
         
-    return Animal(kid_tag,kid_sex,gen,pcr,mcr)  ##new kid
+    return Animal(kid_tag,kid_sex,zygote,pcr,mcr)  ##new kid
 
 
 def drop_pedigree(pop,genome,ped,store_backend=None):

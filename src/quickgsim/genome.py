@@ -19,7 +19,9 @@ class Variant:
     def get_name(self):
         return f"{self.chrom}_{self.pos}"
 
-
+    def get_effect(self,trait_name,mv=0):
+        return self.add_effects.get(trait_name,0)
+    
 
 @dataclass
 class Chrom:
@@ -61,10 +63,6 @@ class Chrom:
         else:
             self.xover_p /= self.xover_p.sum()
             
-##NOTE: 
-#    def p_to_cm(self):
-#        self.cm_pos = np.cumsum(self.cm_pos*self.morgans*100)
-    
     def get_variant_by_pos(self,pos,mv=None) -> Variant:
         """Returns a variant in a specific <pos>ition"""
         return self.pos_idx.get(pos,None)
@@ -75,7 +73,14 @@ class Chrom:
             return self.variants[nth_pos]
         except IndexError:
             return mv
-        
+
+    def get_variants_attrs(self,indeces) -> List:
+        out = []
+        for i in indeces:
+            v = self.get_variant_by_ordinal(i,mv=None)
+            if v:                       
+                out.append(v)
+        return out
         
 
 
@@ -85,7 +90,16 @@ class Genome:
     def __init__(self,rs=None):
         self.chroms = {}
         self.rs = rs if rs else RAN_GEN
-        
+    
+    def total_len(self,unit="morgans"):
+        if unit == "morgans":
+            return sum(self.chroms[c].morgans for c in self.chroms)
+        elif unit == "bp":
+            return sum(self.chroms[c].length for c in self.chroms)
+        else:
+            print(f"Unable to return total lenght in {unit}. Valid options are: morgans, bp")
+            return None
+    
     def add_chrom(self,chrom_name,length,morgans):
         if chrom_name not in self.chroms:
             self.chroms[chrom_name] = Chrom(chrom_name,length,morgans)               
@@ -99,22 +113,21 @@ class Genome:
     def __repr__(self):
         info  = []
         for c in self.chroms:
-                info.append(f"- Chromosome {c} contains {self.chroms[c].nvars} variants and is {self.chroms[c].morgans} MAP-UNITS long")
+            info.append(f"- Chromosome {c} contains {self.chroms[c].nvars} variants and is {self.chroms[c].morgans} MAP-UNITS long")
         return "\n".join(info)
 
-
-
-    ##<Recombination> 
-    def recomb_events(self,chrom_name,obligatory=1,max_events_asPropChromLen=None):
+    ##<Recombination>----------------------------------------------------------
+    def recomb_events(self,chrom_name,obligatory=1,max_events_asPropChromLen=None,mod_len_chrom=0):
         """Determines the number of cross-overs in a chromosome drawing from a poisson distribution
            Allows to specify the maximun number of events as a proportion of the chromosome length (could use 3 or 4 to limit outliers)
+           Accepts <mod_len_chrom> (in morgans) to modify the chromosome length for specific reasons (ie males vs females or heritable xovers)
         """
         if chrom_name in self.chroms:
-            r = self.rs.poisson(self.chroms[chrom_name].morgans)
+            r = self.rs.poisson(self.chroms[chrom_name].morgans + mod_len_chrom)
             if max_events_asPropChromLen:
                 max_recomb = self.chroms[chrom_name].morgans * max_events_asPropChromLen
                 if r > max_recomb:
-                    r = max_recomb
+                    r = int(round(max_recomb,0))
             return r if r >= 1 else obligatory
         return None
     
@@ -127,14 +140,18 @@ class Genome:
             crossovers.sort()
             return crossovers.astype(int)
         return []
-        
-    ##<Mutation>
+    ##</Recombination>
+    
+    
+    ##<Mutation>---------------------------------------------------------------
     def mutate_gamete(self,gamete):
         """would switch alleles ONLY, not introducing new mutations"""
         return gamete
     ##</Mutation>
     
-    def get_gamete(self,genotype):
+    
+    ##<Crosses>----------------------------------------------------------------
+    def get_gamete(self,genotype,obligatory_xovers=1,mod_len_genome=0):
         gamete = {c:[] for c in genotype.iterate_chroms()}
         crossovers = {c:[[],[]] for c in genotype.iterate_chroms()}
         
@@ -143,7 +160,7 @@ class Genome:
             gamete[c] = np.empty(n_markers,dtype=int)
             
             ## determine recombination paramters for current chromosome c
-            n_recomb = self.recomb_events(c,obligatory=1)
+            n_recomb = self.recomb_events(c,obligatory=obligatory_xovers,mod_len_chrom=mod_len_genome/self.chroms[c].morgans)
             breaks = self.place_recomb(self.chroms[c],n_recomb)
             st_strand = self.rs.integers(0,2)
             
@@ -173,3 +190,11 @@ class Genome:
             genotype[c][0] = pat_gam[c]
             genotype[c][1] = mat_gam[c]
         return genotype
+    ##</Crosses>
+    
+    
+    ##<Breeding values>--------------------------------------------------------
+    
+    
+    ##</Breeding values>
+    

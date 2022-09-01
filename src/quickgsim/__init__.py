@@ -40,6 +40,8 @@ from .genotype import Genotype
 from .genome import Genome
 from .importers import read_snps,read_real_haplos
 from .sim import create_founders,mate,drop_pedigree
-from .quick_setup import equidistant_genome
-
+from .quick_setup import equidistant_genome,generate_random_animals
+from .traits import pedTrait, genomicTrait
+from .pedigree import Pedigree
+from .pop import Pop
 
